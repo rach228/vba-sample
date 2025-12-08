@@ -12,3 +12,5 @@ Locate the section of the code that defines the `wsData` variable and update it 
 The default name for your Excel sheet in the vulnerability report is usually something like `RHACS_Vulnerability_Report_<first 4 letters of the report name>`. Make sure this matches the actual name in your Excel file. Save the file.
 
 Once the macro is set up, return to your Excel sheet, click on “macros,” select the macro you just created, and run it. The macro will generate the pivot table automatically, allowing you to filter and visualize the CVE data efficiently.
+
+Redfer to this [video](https://youtu.be/Ian18xhB0Xc?si=OTPPdOKy4g4xeN5T) for reference.
