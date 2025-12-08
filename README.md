@@ -13,4 +13,4 @@ The default name for your Excel sheet in the vulnerability report is usually som
 
 Once the macro is set up, return to your Excel sheet, click on “macros,” select the macro you just created, and run it. The macro will generate the pivot table automatically, allowing you to filter and visualize the CVE data efficiently.
 
-Redfer to this [video](https://youtu.be/Ian18xhB0Xc?si=OTPPdOKy4g4xeN5T) for reference.
+Refer to this [video](https://youtu.be/Ian18xhB0Xc?si=OTPPdOKy4g4xeN5T) for reference.
