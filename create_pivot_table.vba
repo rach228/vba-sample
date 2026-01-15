@@ -1,4 +1,5 @@
 Sub CreatePivotTable()
+
     Dim wb As Workbook
     Dim wsData As Worksheet, wsFiltered As Worksheet, wsPivot As Worksheet
     Dim rngFiltered As Range
@@ -7,9 +8,10 @@ Sub CreatePivotTable()
     Dim pTable As PivotTable
 
     Set wb = ThisWorkbook
+    ' === CHANGE THIS TO YOUR SOURCE WORKSHEET NAME ===
     Set wsData = wb.Sheets("RHACS_Vulnerability_Report_Work")
 
-    ' Delete old sheets if they exist
+    ' === Delete old sheets ===
     Application.DisplayAlerts = False
     On Error Resume Next
     wb.Sheets("Filtered").Delete
@@ -17,38 +19,49 @@ Sub CreatePivotTable()
     On Error GoTo 0
     Application.DisplayAlerts = True
 
-    ' Create Filtered sheet
+    ' === Create filtered sheet ===
     Set wsFiltered = wb.Sheets.Add(After:=wsData)
     wsFiltered.Name = "Filtered"
 
-    ' Copy header row
     wsData.Rows(1).Copy Destination:=wsFiltered.Rows(1)
-    wsFiltered.Cells(1, 13).Value = "CVE_Count" ' Helper column
+    wsFiltered.Cells(1, 13).Value = "CVE_Count"
 
-    ' Filter and copy data
     Dim i As Long, j As Long, rowOut As Long
     rowOut = 2
-    lastRow = wsData.Cells(wsData.Rows.Count, "A").End(xlUp).row
+    lastRow = wsData.Cells(wsData.Rows.Count, "A").End(xlUp).Row
 
+    ' === NAMESPACE FILTER LIST (JUST A SAMPLE, EDIT THIS ACCORDINGLY) ===
+    Dim nsList As Variant
+    nsList = Array( _
+        "openshift-*", _
+        "kube-*", _
+        "rhacs-operator*", _
+        "open-cluster-management*", _
+        "cert-manager*", _
+        "stackrox", _
+        "multicluster-engine", _
+        "aap", _
+        "hive", _
+        "nvidia-gpu-operator" _
+    )
+
+    ' === FILTER LOOP ===
     For i = 2 To lastRow
+        
         Dim ns As String, sev As String, cve As String
         ns = LCase(Trim(wsData.Cells(i, 2).Value))
         sev = UCase(Trim(wsData.Cells(i, 9).Value))
         cve = Trim(wsData.Cells(i, 6).Value)
 
-        If ( _
-            ns Like "openshift-*" Or ns Like "kube-*" Or _
-            ns Like "rhacs-operator*" Or ns Like "open-cluster-management*" Or _
-            ns Like "cert-manager*" Or _
-            ns = "stackrox" Or ns = "multicluster-engine" Or _
-            ns = "aap" Or ns = "hive" Or ns = "nvidia-gpu-operator") _
-            And (sev = "CRITICAL" Or sev = "IMPORTANT") _
-            And LCase(Left(cve, 4)) = "cve-" Then
+        If NamespaceMatches(ns, nsList) _
+           And (sev = "CRITICAL" Or sev = "IMPORTANT") _
+           And LCase(Left(cve, 4)) = "cve-" Then
 
             For j = 1 To 12
                 wsFiltered.Cells(rowOut, j).Value = wsData.Cells(i, j).Value
             Next j
-            wsFiltered.Cells(rowOut, 13).Value = 1 ' Add count
+
+            wsFiltered.Cells(rowOut, 13).Value = 1
             rowOut = rowOut + 1
         End If
     Next i
@@ -58,60 +71,38 @@ Sub CreatePivotTable()
         Exit Sub
     End If
 
-    ' Create Pivot Table sheet
+    ' === Create Pivot Table Sheet ===
     Set wsPivot = wb.Sheets.Add(After:=wsFiltered)
     wsPivot.Name = "FilteredPivot"
 
     Set rngFiltered = wsFiltered.Range("A1").CurrentRegion
     Set pCache = wb.PivotCaches.Create(xlDatabase, rngFiltered.Address(, , , True))
 
-    Set pTable = pCache.CreatePivotTable( _
-        TableDestination:=wsPivot.Range("A3"), TableName:="FilteredCVEPivot")
+    Set pTable = pCache.CreatePivotTable(wsPivot.Range("A3"), "FilteredCVEPivot")
 
-    ' Configure pivot fields
     With pTable
         .ClearAllFilters
 
-        With .PivotFields("CVE")
-            .Orientation = xlRowField
-            .Position = 1
-        End With
-
-        With .PivotFields("Fixable")
-            .Orientation = xlRowField
-            .Position = 2
-        End With
-
-        With .PivotFields("Reference")
-            .Orientation = xlRowField
-            .Position = 3
-        End With
-
-        With .PivotFields("Component")
-            .Orientation = xlRowField
-            .Position = 4
-        End With
+        .PivotFields("CVE").Orientation = xlRowField
+        .PivotFields("Fixable").Orientation = xlRowField
+        .PivotFields("Reference").Orientation = xlRowField
+        .PivotFields("Component").Orientation = xlRowField
 
         .AddDataField .PivotFields("CVE_Count"), "Count of CVE", xlSum
         .RowAxisLayout xlCompactRow
         .RepeatAllLabels xlRepeatLabels
-        .RowGrand = True
-        .ColumnGrand = False
     End With
 
-    ' Rename Row Labels
     wsPivot.Range("A3").Value = "CVE/Fixable/Reference/Component"
     wsPivot.Columns("A:B").AutoFit
 
-    ' === ? Insert Summary Rows ===
-    Dim lastPivotRow As Long
-    lastPivotRow = wsPivot.Cells(wsPivot.Rows.Count, "A").End(xlUp).row
-
-    ' Count total CVEs and unique CVE IDs
+    ' === Additional Summary Rows ===
+    Dim lastPivotRow As Long, row As Long
     Dim totalCVEs As Long: totalCVEs = 0
     Dim uniqueCVEs As Long: uniqueCVEs = 0
 
-    Dim row As Long
+    lastPivotRow = wsPivot.Cells(wsPivot.Rows.Count, "A").End(xlUp).Row
+
     For row = 4 To lastPivotRow
         If Left(wsPivot.Cells(row, 1).Value, 4) = "CVE-" Then
             totalCVEs = totalCVEs + wsPivot.Cells(row, 2).Value
@@ -119,17 +110,27 @@ Sub CreatePivotTable()
         End If
     Next row
 
-    ' Insert Unique CVEs count row
     wsPivot.Cells(lastPivotRow + 1, 1).Value = "Unique CVEs"
     wsPivot.Cells(lastPivotRow + 1, 2).Value = uniqueCVEs
-    wsPivot.Cells(lastPivotRow + 1, 1).Font.Bold = True
-    wsPivot.Cells(lastPivotRow + 1, 2).Font.Bold = True
-
-    ' Insert Grand Total row
     wsPivot.Cells(lastPivotRow + 2, 1).Value = "Grand Total"
     wsPivot.Cells(lastPivotRow + 2, 2).Value = totalCVEs
-    wsPivot.Cells(lastPivotRow + 2, 1).Font.Bold = True
-    wsPivot.Cells(lastPivotRow + 2, 2).Font.Bold = True
 
-    MsgBox "? Pivot created with Unique CVE count and correct Grand Total!", vbInformation
+    wsPivot.Range("A" & lastPivotRow + 1 & ":B" & lastPivotRow + 2).Font.Bold = True
+
+    MsgBox "Pivot created successfully!", vbInformation
+
 End Sub
+
+' ============================================================
+' Helper function for namespace filtering (supports wildcards)
+' ============================================================
+Function NamespaceMatches(ns As String, nsList As Variant) As Boolean
+    Dim x As Variant
+    For Each x In nsList
+        If ns Like LCase(x) Then
+            NamespaceMatches = True
+            Exit Function
+        End If
+    Next x
+    NamespaceMatches = False
+End Function
