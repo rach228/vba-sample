@@ -1,7 +1,7 @@
 # Clean Vulnerability Reports using VBA Macros
 To automate the creation of pivot tables for CVE analysis, you can use the sample VBA macros with the following steps:
 
-First, download the vulnerability report for the target cluster from Red Hat Advanced Cluster Security or from the scheduled email reports. Convert the vulnerability report from CSV format to XLSM format to enable macros. Copy the VBA macro code from `create_pivot_table.vba`.
+First, download the vulnerability report for the target cluster from Red Hat Advanced Cluster Security or from the scheduled email reports. Convert the vulnerability report from CSV format to XLSM format to enable macros. Copy the VBA macro code from `create_pivot_table.vba`. Take note that the namespace filter list in the VBA code is a sample. You may refer to `create_pivot_table_updated.vba` which contains default list of OpenShift platform-related namespaces.
 
 Second, open Excel and navigate to the developer tab. If the developer tab is not visible, right-click on the ribbon, select “customize the ribbon,” and tick the checkbox for “developer.”
 
