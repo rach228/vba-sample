@@ -30,7 +30,7 @@ Sub CreatePivotTable()
     rowOut = 2
     lastRow = wsData.Cells(wsData.Rows.Count, "A").End(xlUp).Row
 
-    ' === NAMESPACE FILTER LIST (EDIT THIS) ===
+    ' === NAMESPACE FILTER LIST ===
     Dim nsList As Variant
     nsList = Array( _
         "openshift-*", _
